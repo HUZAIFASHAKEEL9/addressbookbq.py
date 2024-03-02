@@ -1,54 +1,71 @@
-def add_contact(address_book, name, phone_number):
-    address_book[name] = phone_number
-    print(f"Contact {name} added successfully.")
+ import streamlit as st
+import sqlite3
 
-def search_contact(address_book, name):
-    if name in address_book:
-        print(f"Name: {name}, Phone Number: {address_book[name]}")
-    else:
-        print(f"Contact {name} not found.")
+# Create a connection to the SQLite database
+conn = sqlite3.connect('address_book.db')
+c = conn.cursor()
 
-def delete_contact(address_book, name):
-    if name in address_book:
-        del address_book[name]
-        print(f"Contact {name} deleted successfully.")
-    else:
-        print(f"Contact {name} not found.")
+# Create a table to store contacts if it doesn't exist
+c.execute('''CREATE TABLE IF NOT EXISTS contacts
+             (id INTEGER PRIMARY KEY, name TEXT, phone TEXT, email TEXT)''')
+conn.commit()
 
-def print_address_book(address_book):
-    print("Address Book:")
-    for name, phone_number in address_book.items():
-        print(f"Name: {name}, Phone Number: {phone_number}")
+# Function to add a contact to the database
+def add_contact(name, phone, email):
+    c.execute('''INSERT INTO contacts (name, phone, email) VALUES (?, ?, ?)''',
+              (name, phone, email))
+    conn.commit()
 
+# Function to delete a contact from the database
+def delete_contact(name):
+    c.execute('''DELETE FROM contacts WHERE name=?''', (name,))
+    conn.commit()
+
+# Function to search for a contact in the database
+def search_contact(name):
+    c.execute('''SELECT * FROM contacts WHERE name=?''', (name,))
+    return c.fetchone()
+
+# Function to display all contacts from the database
+def display_contacts():
+    c.execute('''SELECT * FROM contacts''')
+    return c.fetchall()
+
+# Main function
 def main():
-    address_book = {}
-    while True:
-        print("\nOptions:")
-        print("1. Add Contact")
-        print("2. Search Contact")
-        print("3. Delete Contact")
-        print("4. Print Address Book")
-        print("5. Exit")
+    st.title("Address Book")
 
-        choice = input("Enter your choice: ")
+    st.sidebar.title("Add Contact")
+    name = st.sidebar.text_input("Name")
+    phone = st.sidebar.text_input("Phone")
+    email = st.sidebar.text_input("Email")
 
-        if choice == "1":
-            name = input("Enter name: ")
-            phone_number = input("Enter phone number: ")
-            add_contact(address_book, name, phone_number)
-        elif choice == "2":
-            name = input("Enter name to search: ")
-            search_contact(address_book, name)
-        elif choice == "3":
-            name = input("Enter name to delete: ")
-            delete_contact(address_book, name)
-        elif choice == "4":
-            print_address_book(address_book)
-        elif choice == "5":
-            print("Exiting program.")
-            break
+    if st.sidebar.button("Add Contact"):
+        add_contact(name, phone, email)
+        st.sidebar.success("Contact added successfully.")
+
+    st.sidebar.title("Delete Contact")
+    delete_name = st.sidebar.text_input("Name to delete")
+    if st.sidebar.button("Delete Contact"):
+        delete_contact(delete_name)
+        st.sidebar.success("Contact deleted successfully.")
+
+    st.sidebar.title("Search Contact")
+    search_name = st.sidebar.text_input("Name to search")
+    if st.sidebar.button("Search Contact"):
+        contact = search_contact(search_name)
+        if contact:
+            st.write(f"Name: {contact[1]}, Phone: {contact[2]}, Email: {contact[3]}")
         else:
-            print("Invalid choice. Please try again.")
+            st.error("Contact not found.")
+
+    st.header("All Contacts")
+    contacts = display_contacts()
+    if contacts:
+        for contact in contacts:
+            st.write(f"Name: {contact[1]}, Phone: {contact[2]}, Email: {contact[3]}")
+    else:
+        st.info("No contacts in the address book.")
 
 if __name__ == "__main__":
     main()
